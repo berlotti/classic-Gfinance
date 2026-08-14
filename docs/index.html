@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchlist</title>
+<style>
+  :root{
+    --bg:#f1f3f4; --card:#fff; --text:#202124; --dim:#5f6368; --line:#e8eaed;
+    --blue:#1a73e8;
+    --up:#137333; --up-bg:#e6f4ea; --down:#c5221f; --down-bg:#fce8e6;
+    --flat:#5f6368; --flat-bg:#f1f3f4;
+    --shadow:0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
+  }
+  /* Applied by the Theme button; "Auto" resolves to one of these at load. */
+  html[data-theme="dark"]{
+    --bg:#202124; --card:#292a2d; --text:#e8eaed; --dim:#9aa0a6; --line:#3c4043;
+    --blue:#8ab4f8;
+    --up:#81c995; --up-bg:#1e3a2a; --down:#f28b82; --down-bg:#3f2422;
+    --flat:#9aa0a6; --flat-bg:#35363a;
+    --shadow:0 1px 3px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:24px 16px 56px;background:var(--bg);color:var(--text);
+    font-family:"Google Sans",Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  .card{background:var(--card);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+
+  .sheetname{
+    font-size:20px;font-weight:500;margin:0 0 10px;padding:3px 7px;border-radius:6px;
+    color:var(--text);outline:none;display:inline-block;min-width:80px;cursor:text;
+  }
+  .sheetname:hover{background:var(--flat-bg)}
+  .sheetname:focus{background:var(--flat-bg);box-shadow:inset 0 0 0 1px var(--blue)}
+  .sheetname.unset{color:var(--dim);font-style:italic;font-weight:400;font-size:14px}
+
+  .sheetbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+  .sheetbar input{
+    flex:1;min-width:0;font:inherit;font-size:13px;padding:8px 13px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--text);outline:none;
+  }
+  .sheetbar input:focus{border-color:var(--blue)}
+  .sheetbar input::placeholder{color:var(--dim)}
+  .sheetbar button{
+    border:1px solid var(--line);background:var(--card);color:var(--dim);
+    padding:8px 16px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;
+  }
+  .sheetbar button:hover{background:var(--flat-bg);color:var(--text)}
+  .sheetbar button:disabled{opacity:.5;cursor:default}
+  .sheeterr{font-size:12px;color:var(--down);margin:-6px 0 12px;line-height:1.5}
+  .sheeterr:empty{display:none}
+
+  .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs button{
+    border:1px solid var(--line);background:var(--card);color:var(--dim);
+    padding:6px 15px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;
+  }
+  .tabs button:hover{background:var(--flat-bg);color:var(--text)}
+  .tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  html[data-theme="dark"] .tabs button.on{color:#202124}
+
+  .head{display:flex;align-items:center;gap:12px;padding:16px 20px}
+  .head h1{font-size:15px;font-weight:500;margin:0;flex:1}
+  .head button{
+    background:none;border:1px solid var(--line);border-radius:999px;color:var(--dim);
+    font:inherit;font-size:12px;padding:6px 14px;cursor:pointer;
+  }
+  .head button:hover{background:var(--flat-bg);color:var(--text)}
+  .head button:disabled{opacity:.5;cursor:default}
+
+  .summary{
+    display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;
+    padding:0 20px 12px;font-size:12px;color:var(--dim);
+  }
+  .summary:empty{display:none}
+  .summary b{font-weight:600;color:var(--text)}
+  .summary b.up{color:var(--up)} .summary b.down{color:var(--down)}
+
+  /* Rows on an exchange that isn't trading right now are muted. */
+  .row.shut .name a, .row.shut .num{opacity:.5}
+  .row.shut .badge{opacity:.45}
+  .row.shut .pill{background:var(--flat-bg)!important;color:var(--flat)!important}
+
+  .name a{color:inherit;text-decoration:none}
+  .name a:hover{text-decoration:underline}
+  .row{cursor:pointer}
+
+  .hrow{
+    display:grid;grid-template-columns:56px minmax(0,1fr) 116px 96px 96px;
+    align-items:center;gap:12px;padding:0 20px 8px;
+    border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);
+  }
+  .hrow span{cursor:pointer;user-select:none;white-space:nowrap}
+  .hrow span:hover{color:var(--text)}
+  .hrow .r{text-align:right}
+  .hrow .on{color:var(--blue);font-weight:600}
+  .caret{font-size:9px;margin-left:3px}
+
+  .row{
+    display:grid;grid-template-columns:56px minmax(0,1fr) 116px 96px 96px;
+    align-items:center;gap:12px;padding:11px 20px;
+    border-bottom:1px solid var(--line);font-size:14px;
+  }
+  .row:last-child{border-bottom:none}
+  .row:hover{background:var(--flat-bg)}
+  .badge{
+    font-size:10px;font-weight:700;letter-spacing:.4px;padding:4px 2px;border-radius:4px;
+    text-align:center;color:#fff;text-transform:uppercase;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .badge.plain{background:transparent!important;color:var(--text);
+               border:1px solid var(--line);font-weight:600}
+  .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill{
+    display:inline-flex;align-items:center;justify-content:center;gap:3px;
+    padding:5px 9px;border-radius:6px;font-size:13px;
+    font-variant-numeric:tabular-nums;min-width:84px;
+  }
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--flat)}
+  .pill.up{background:var(--up-bg)} .pill.down{background:var(--down-bg)} .pill.flat{background:var(--flat-bg)}
+  .pctcell{display:flex;justify-content:flex-end}
+
+  .foot{padding:12px 20px;font-size:12px;color:var(--dim);border-top:1px solid var(--line)}
+  .disclaimer{
+    max-width:880px;margin:18px auto 0;padding:0 4px;
+    font-size:11px;line-height:1.7;color:var(--dim);
+  }
+  .disclaimer p{margin:0 0 7px}
+  .disclaimer b{color:var(--dim);font-weight:600}
+  .msg{padding:36px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.7}
+  .msg b{color:var(--text)}
+  .msg button{
+    margin-top:14px;background:var(--blue);color:#fff;border:none;border-radius:999px;
+    padding:9px 20px;font:inherit;font-size:13px;cursor:pointer;
+  }
+  html[data-theme="dark"] .msg button{color:#202124}
+
+  @media (max-width:600px){
+    body{padding:12px 8px 40px}
+    .row,.hrow{grid-template-columns:48px minmax(0,1fr) 92px 88px;gap:8px;padding-left:14px;padding-right:14px}
+    .chg{display:none}
+    .head,.foot,.msg{padding-left:14px;padding-right:14px}
+    .pill{min-width:0;width:100%;padding:5px 6px;font-size:12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div><h1 class="sheetname" id="sheetName" contenteditable="true" spellcheck="false"></h1></div>
+<div class="sheetbar">
+  <input id="sheetUrl" type="text" spellcheck="false" autocomplete="off"
+         placeholder="Google Sheets link or ID" aria-label="Google Sheets link">
+  <button id="sheetLoad">Load</button>
+  <button id="sheetDemo" title="Load an example sheet">Demo sheet</button>
+</div>
+<div class="sheeterr" id="sheetErr"></div>
+<div class="tabs" id="tabs"></div>
+<div class="card">
+  <div class="head">
+    <h1 id="title">Watchlist</h1>
+    <button id="theme" title="Switch between automatic, light and dark">Theme</button>
+    <button id="refresh">Refresh</button>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="hrow" id="hrow">
+    <span></span>
+    <span data-sort="name">Name</span>
+    <span data-sort="price" class="r">Price</span>
+    <span data-sort="change" class="r chg">Change</span>
+    <span data-sort="pct" class="r">% Chg</span>
+  </div>
+  <div id="body"><div class="msg">Loading…</div></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<div class="disclaimer">
+  <p><b>Not investment advice.</b> This page is a personal viewer for your own spreadsheet.
+  Nothing here is a recommendation to buy, sell or hold any security, and it takes no account of
+  your circumstances or objectives. Do your own research and speak to a qualified adviser before
+  making investment decisions.</p>
+
+  <p><b>Figures are delayed and may be wrong.</b> Values come from your Google Sheet, which gets
+  them from Google Finance via the GOOGLEFINANCE function — typically delayed 15–20 minutes and in
+  some cases longer. They are loaded once when the page opens and do not update until you press
+  Refresh, so what you see may be stale. Quotes can be incomplete, interrupted or simply incorrect,
+  and are not suitable for trading decisions. Check with your broker or the exchange before acting
+  on anything shown here.</p>
+
+  <p><b>Open and closed markets are a guess.</b> Rows are greyed out when the exchange in the
+  ticker is outside its regular trading hours, worked out from your computer's clock. Public
+  holidays and unscheduled halts are not known here, so a market shut for a holiday will still
+  look open, and auctions or extended-hours trading are not reflected.</p>
+
+  <p><b>Amounts are not converted.</b> Each row is shown in whatever currency your sheet reports,
+  so totals across currencies are not comparable. Daily change and percentage are taken from your
+  sheet, or derived from the values it provides.</p>
+
+  <p><b>No affiliation, no warranty.</b> Market data belongs to Google and the relevant exchanges
+  and is subject to their terms; this page is not affiliated with, endorsed by or supported by
+  Google, any exchange or any data provider. It is provided as is, without warranty of any kind,
+  and is intended for personal use. Use of the data is at your own risk.</p>
+</div>
+</div>
+
+<script>
+/* =====================================================================
+   Your sheet. Only the first tab is readable while the sheet is
+   link-shared rather than published to the web.
+   ===================================================================== */
+var DEMO_SHEET = "https://docs.google.com/spreadsheets/d/1UvTu-ZDs8euxx4h5qWev9wBgc-MBPdy7ZzE9ePHGEh0/edit?usp=sharing";
+
+/* ---------------------------------------------------------------------
+   Remembering things between visits.
+
+   Written to a cookie and to local storage, read back from whichever
+   answers. Browsers refuse cookies on pages opened straight from disk
+   (a file:// address has no host to attach them to), so when you run
+   this as a local file the local-storage copy is the one doing the work;
+   served over http(s) the cookie works too.
+   --------------------------------------------------------------------- */
+var YEAR = 60 * 60 * 24 * 365;
+
+function remember(key, value){
+  try { localStorage.setItem(key, value); } catch(e){}
+  try {
+    document.cookie = encodeURIComponent(key) + "=" + encodeURIComponent(value) +
+                      ";path=/;max-age=" + YEAR + ";SameSite=Lax";
+  } catch(e){}
+}
+
+function recall(key){
+  try {
+    var parts = document.cookie ? document.cookie.split("; ") : [];
+    for (var i = 0; i < parts.length; i++){
+      var eq = parts[i].indexOf("=");
+      if (eq > -1 && decodeURIComponent(parts[i].slice(0, eq)) === key)
+        return decodeURIComponent(parts[i].slice(eq + 1));
+    }
+  } catch(e){}
+  try { return localStorage.getItem(key); } catch(e){}
+  return null;
+}
+
+function forget(key){
+  try { localStorage.removeItem(key); } catch(e){}
+  try { document.cookie = encodeURIComponent(key) + "=;path=/;max-age=0;SameSite=Lax"; } catch(e){}
+}
+
+/* Nothing is loaded until you paste a sheet or press Demo sheet. */
+var sheetInput = recall("cw.sheet") || "";
+var SHEET_ID = "";
+
+/* Accepts a full share link, a plain /edit link, or a bare id. */
+function extractSheetId(input){
+  var s = String(input == null ? "" : input).trim();
+  if (!s) throw new Error("Paste a Google Sheets link or id first.");
+  if (/\/spreadsheets\/d\/e\/2PACX/.test(s))
+    throw new Error("That's a publish-to-web link. Open the sheet and copy the normal link from the address bar (or Share → Copy link) instead.");
+  var m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s;
+  if (/^https?:\/\//.test(s))
+    throw new Error("That link doesn't look like a Google Sheet — it should contain /spreadsheets/d/…");
+  throw new Error("That doesn't look like a Google Sheets link or id.");
+}
+
+function base(){
+  return "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq";
+}
+
+/* ---------------------------------------------------------------------
+   Loading the data.
+
+   A plain fetch() of the CSV endpoint does not work from a file:// page:
+   Google doesn't send CORS headers on it, so the browser blocks the reply
+   ("Failed to fetch"). A <script> tag is not subject to CORS, and this
+   endpoint will wrap its reply in a function call of our choosing, so we
+   load it that way instead. Still only your sheet — no proxy, no third party.
+   --------------------------------------------------------------------- */
+function loadViaScript(sheet, onOk, onErr){
+  var name = "cw" + Math.random().toString(36).slice(2, 10);
+  var el = document.createElement("script");
+  var timer, settled = false;
+
+  function cleanup(){
+    if (timer) clearTimeout(timer);
+    try { delete window[name]; } catch(e){ window[name] = undefined; }
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }
+  function ok(resp){ if (settled) return; settled = true; cleanup(); onOk(resp); }
+  function err(e){ if (settled) return; settled = true; cleanup(); onErr(e); }
+
+  window[name] = ok;
+  el.onerror = function(){ err(new Error("the sheet could not be loaded")); };
+  // If Google answers with a sign-in page instead of data, the browser still
+  // "loads" the script — it just fails to parse it, so onerror never fires and
+  // our callback never runs. The load event firing with nothing settled means
+  // exactly that, and we can report it straight away instead of waiting out
+  // the timeout.
+  el.onload = function(){
+    if (!settled) err(new Error("Google returned a web page instead of data — the sheet may not be public"));
+  };
+  timer = setTimeout(function(){ err(new Error("the request timed out")); }, 20000);
+
+  el.src = base() + "?tqx=out:json;responseHandler:" + name +
+           "&headers=0&sheet=" + encodeURIComponent(sheet) +
+           "&_=" + Date.now() + "" + Math.random().toString(36).slice(2, 6);
+  document.head.appendChild(el);
+}
+
+function stripTags(s){ return String(s == null ? "" : s).replace(/<[^>]*>/g, "").trim(); }
+
+/* The reply is {status, table:{cols, rows:[{c:[{v:…},…]},…]}, errors:[…]} */
+function rowsFromResponse(resp){
+  if (!resp) throw new Error("the sheet sent an empty reply");
+  if (resp.status === "error"){
+    var e = resp.errors && resp.errors[0];
+    var msg = e ? (e.detailed_message || e.message || e.reason) : "";
+    msg = stripTags(msg) || "Google refused the request";
+    if (/access|permission|denied|signin|sign in/i.test(msg))
+      msg = "the sheet isn't readable — check it's still shared with anyone who has the link";
+    throw new Error(msg);
+  }
+  var t = resp.table;
+  if (!t || !t.rows) throw new Error("the sheet sent no table");
+  return t.rows.map(function(r){
+    return (r && r.c ? r.c : []).map(function(cell){
+      return (!cell || cell.v == null) ? "" : cell.v;
+    });
+  });
+}
+
+/* =====================================================================
+   Reading the values
+   ===================================================================== */
+var ERR = /^#(N\/A|REF|ERROR|NAME|VALUE|DIV|NUM|NULL)/i;
+
+function isBlank(v){
+  if (typeof v === "number") return false;
+  var s = String(v == null ? "" : v).trim();
+  return !s || ERR.test(s);
+}
+
+/* A value that is purely a number, so "HKG:0388" doesn't qualify. */
+function isNumeric(v){
+  if (typeof v === "number") return isFinite(v);
+  var s = String(v == null ? "" : v).trim();
+  if (!s) return false;
+  s = s.replace(/^[$€£¥]\s?/, "").replace(/\s/g, "");
+  return /^[-+(]?\d[\d.,]*\)?%?$/.test(s);
+}
+
+function toNum(v){
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  if (v == null) return null;
+  var s = String(v).trim();
+  if (!s || ERR.test(s)) return null;
+  var neg = /^\(.*\)$/.test(s);
+  s = s.replace(/[()]/g, "").replace(/[^0-9.,+-]/g, "");
+  if (!s) return null;
+  var lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+  if (lc > ld && /,\d{1,2}$/.test(s)) s = s.replace(/\./g,"").replace(/,/g,".");
+  else s = s.replace(/,/g,"");
+  var n = parseFloat(s);
+  if (!isFinite(n)) return null;
+  return neg ? -n : n;
+}
+
+/* Work out which column is which from the data itself, so the sheet's
+   layout can change without breaking this page. Text columns in order:
+   symbol, then name. A column of 3-letter codes is the currency.
+   Numeric columns in order: price, change, % change. */
+function inferColumns(rows){
+  var sample = rows.slice(0, 12);
+  if (!sample.length) return null;
+
+  var ncol = 0;
+  sample.forEach(function(r){ if (r.length > ncol) ncol = r.length; });
+
+  var numeric = [], code3 = [];
+  for (var c = 0; c < ncol; c++){
+    var seen = 0, nums = 0, codes = 0;
+    for (var i = 0; i < sample.length; i++){
+      var v = sample[i][c];
+      if (isBlank(v)) continue;
+      seen++;
+      if (isNumeric(v)) nums++;
+      if (/^[A-Za-z]{3}$/.test(String(v).trim())) codes++;
+    }
+    numeric.push(seen > 0 && nums === seen);
+    code3.push(seen > 0 && codes === seen);
+  }
+
+  var map = {}, nums = [], texts = [];
+  for (var c = 0; c < ncol; c++){ (numeric[c] ? nums : texts).push(c); }
+  for (var t = 1; t < texts.length; t++){
+    if (code3[texts[t]]){ map.currency = texts[t]; break; }
+  }
+  texts.forEach(function(c){
+    if (c === map.currency) return;
+    if (map.symbol == null) map.symbol = c;
+    else if (map.name == null) map.name = c;
+  });
+  if (map.symbol == null) map.symbol = 0;
+  if (nums[0] != null) map.price  = nums[0];
+  if (nums[1] != null) map.change = nums[1];
+  if (nums[2] != null) map.pct    = nums[2];
+  return map.price == null ? null : map;
+}
+
+function parseRows(allRows){
+  var rows = allRows.filter(function(r){
+    return r.some(function(c){ return !isBlank(c); });
+  });
+  if (!rows.length) throw new Error("the sheet looks empty");
+
+  var map = inferColumns(rows);
+  if (!map) throw new Error("couldn't find a price column in the sheet");
+
+  var out = [];
+  rows.forEach(function(r){
+    var sym = String(r[map.symbol] == null ? "" : r[map.symbol]).trim();
+    if (!sym || ERR.test(sym)) return;           // blank / #N/A filler rows
+    var price = toNum(r[map.price]);
+    if (price == null) return;
+
+    var chg = map.change != null ? toNum(r[map.change]) : null;
+    var pct = map.pct    != null ? toNum(r[map.pct])    : null;
+
+    if (chg == null && pct != null) chg = price - price / (1 + pct/100);
+    if (pct == null && chg != null){
+      var prev = price - chg;
+      pct = prev ? (chg / prev) * 100 : 0;
+    }
+    if (chg == null) chg = 0;
+    if (pct == null) pct = 0;
+
+    var nm  = map.name     != null ? String(r[map.name]||"").trim() : "";
+    var ccy = map.currency != null ? String(r[map.currency]||"").trim().toUpperCase() : "";
+    if (ERR.test(nm)) nm = "";
+    if (!/^[A-Z]{3}$/.test(ccy)) ccy = "";
+
+    out.push({symbol:sym, name: nm || tickerOf(sym), price:price, change:chg, pct:pct, ccy:ccy});
+  });
+
+  if (!out.length) throw new Error("no rows with a price were found");
+  return out;
+}
+
+/* ---------------------------------------------------------------------
+   Tabs.
+
+   Each tab is named 1, 2, 3… and holds its watchlist name in cell A1.
+   Asking for a tab that doesn't exist does NOT produce an error — Google
+   quietly serves the first tab instead. So the way to find where the tabs
+   stop is to spot that fallback: any tab whose contents match tab 1's is
+   really tab 1 coming back again. Probing a whole batch at once (rather
+   than stopping at the first miss) also means a gap in the numbering
+   doesn't hide the tabs after it.
+   --------------------------------------------------------------------- */
+var MAX_TABS = 24, BATCH = 8;
+
+function readTab(resp, n){
+  var rows = rowsFromResponse(resp);
+  var title = "";
+  if (rows.length){
+    var first = rows[0];
+    // A title row: something in A1 and no numbers anywhere in the row.
+    if (!isBlank(first[0]) && !first.some(isNumeric)){
+      title = String(first[0]).trim();
+      rows = rows.slice(1);
+    }
+  }
+  var items = parseRows(rows);
+  return {
+    n: n,
+    title: title || ("List " + n),
+    items: items,
+    sig: title + "|" + items.map(function(i){ return i.symbol + ":" + i.price; }).join(",")
+  };
+}
+
+function fetchTab(n){
+  return new Promise(function(resolve){
+    loadViaScript(String(n),
+      function(resp){
+        var t = null;
+        try { t = readTab(resp, n); } catch(e){ t = null; }   // empty tab → ignore
+        resolve(t);
+      },
+      function(){ resolve(null); }
+    );
+  });
+}
+
+/* One list holding everything, deduped by ticker. A stock in two lists shows
+   once, and remembers which lists it came from for its tooltip. */
+function buildAllTab(lists){
+  var seen = {}, items = [];
+  lists.forEach(function(t){
+    t.items.forEach(function(q){
+      var key = q.symbol.toUpperCase();
+      if (seen[key]){
+        if (seen[key].lists.indexOf(t.title) < 0) seen[key].lists.push(t.title);
+        return;
+      }
+      var copy = {};
+      for (var k in q) if (q.hasOwnProperty(k)) copy[k] = q[k];
+      copy.lists = [t.title];
+      seen[key] = copy;
+      items.push(copy);
+    });
+  });
+  return {n: 0, title: "All", items: items, isAll: true, listCount: lists.length};
+}
+
+function fetchAllTabs(){
+  var found = [];
+
+  function batch(start){
+    var jobs = [];
+    for (var n = start; n < start + BATCH && n <= MAX_TABS; n++) jobs.push(fetchTab(n));
+    return Promise.all(jobs).then(function(res){
+      var lastWasReal = false;
+      res.forEach(function(t){
+        if (!t) return;
+        if (found.length && t.sig === found[0].sig) return;   // fallback to tab 1
+        if (found.some(function(f){ return f.sig === t.sig; })) return;
+        found.push(t);
+        lastWasReal = true;
+      });
+      var next = start + BATCH;
+      // Only keep probing if the final slot of this batch was a real tab.
+      var lastSlotReal = res.length && res[res.length-1] &&
+                         found.some(function(f){ return f.n === start + res.length - 1; });
+      if (lastSlotReal && next <= MAX_TABS) return batch(next);
+      return found;
+    });
+  }
+  return batch(1);
+}
+
+/* =====================================================================
+   Is this exchange trading right now?
+
+   Worked out from the exchange prefix on each symbol plus your computer's
+   clock — no extra data is fetched. Regular hours only: public holidays
+   are NOT known here, so a market shut for a holiday will still look open.
+   Anything on an exchange we don't recognise is left alone rather than
+   greyed out on a guess.
+   ===================================================================== */
+var MARKET_OF = {
+  NASDAQ:"US", NYSE:"US", NYSEARCA:"US", NYSEAMERICAN:"US", NYSEMKT:"US", BATS:"US",
+  OTCMKTS:"US", OTC:"US", INDEXSP:"US", INDEXDJX:"US", INDEXNASDAQ:"US", INDEXNYSEGIS:"US",
+  AMS:"EU", EPA:"EU", EBR:"EU", ELI:"EU", INDEXEURO:"EU",
+  ETR:"DE", FRA:"DE", INDEXDB:"DE",
+  LON:"UK", INDEXFTSE:"UK",
+  SWX:"CH", VTX:"CH", BIT:"IT", BME:"ES", STO:"SE", CPH:"DK", HEL:"FI",
+  OSL:"NO", WSE:"PL", VIE:"AT", IST:"TR",
+  HKG:"HK", INDEXHANGSENG:"HK",
+  TYO:"JP", INDEXNIKKEI:"JP",
+  SHA:"CN", SHE:"CN", KRX:"KR", KOSDAQ:"KR", TPE:"TW", SGX:"SG",
+  ASX:"AU", NZE:"NZ", NSE:"IN", BOM:"IN",
+  TSE:"CA", TSX:"CA", CVE:"CA",
+  BVMF:"BR", BMV:"MX", TADAWUL:"SA", TASE:"IL", IDX:"ID", KLSE:"MY", SET:"TH"
+};
+
+/* Sessions are minutes past local midnight; days default to Mon–Fri. */
+var MARKET_HOURS = {
+  US: {name:"US",           tz:"America/New_York",    s:[[570,960]]},
+  CA: {name:"Toronto",      tz:"America/Toronto",     s:[[570,960]]},
+  EU: {name:"Euronext",     tz:"Europe/Amsterdam",    s:[[540,1050]]},
+  DE: {name:"Xetra",        tz:"Europe/Berlin",       s:[[540,1050]]},
+  UK: {name:"London",       tz:"Europe/London",       s:[[480,990]]},
+  CH: {name:"Zurich",       tz:"Europe/Zurich",       s:[[540,1040]]},
+  IT: {name:"Milan",        tz:"Europe/Rome",         s:[[540,1050]]},
+  ES: {name:"Madrid",       tz:"Europe/Madrid",       s:[[540,1050]]},
+  SE: {name:"Stockholm",    tz:"Europe/Stockholm",    s:[[540,1050]]},
+  DK: {name:"Copenhagen",   tz:"Europe/Copenhagen",   s:[[540,1050]]},
+  FI: {name:"Helsinki",     tz:"Europe/Helsinki",     s:[[600,1110]]},
+  NO: {name:"Oslo",         tz:"Europe/Oslo",         s:[[540,1020]]},
+  PL: {name:"Warsaw",       tz:"Europe/Warsaw",       s:[[540,1020]]},
+  AT: {name:"Vienna",       tz:"Europe/Vienna",       s:[[540,1050]]},
+  TR: {name:"Istanbul",     tz:"Europe/Istanbul",     s:[[600,1080]]},
+  HK: {name:"Hong Kong",    tz:"Asia/Hong_Kong",      s:[[570,720],[780,960]]},
+  JP: {name:"Tokyo",        tz:"Asia/Tokyo",          s:[[540,690],[750,930]]},
+  CN: {name:"Shanghai",     tz:"Asia/Shanghai",       s:[[570,690],[780,900]]},
+  KR: {name:"Seoul",        tz:"Asia/Seoul",          s:[[540,930]]},
+  TW: {name:"Taipei",       tz:"Asia/Taipei",         s:[[540,810]]},
+  SG: {name:"Singapore",    tz:"Asia/Singapore",      s:[[540,720],[780,1020]]},
+  AU: {name:"Sydney",       tz:"Australia/Sydney",    s:[[600,960]]},
+  NZ: {name:"Auckland",     tz:"Pacific/Auckland",    s:[[600,975]]},
+  IN: {name:"India",        tz:"Asia/Kolkata",        s:[[555,930]]},
+  BR: {name:"São Paulo",    tz:"America/Sao_Paulo",   s:[[600,1020]]},
+  MX: {name:"Mexico",       tz:"America/Mexico_City", s:[[510,900]]},
+  ID: {name:"Jakarta",      tz:"Asia/Jakarta",        s:[[540,720],[810,900]]},
+  MY: {name:"Kuala Lumpur", tz:"Asia/Kuala_Lumpur",   s:[[540,750],[840,1020]]},
+  TH: {name:"Bangkok",      tz:"Asia/Bangkok",        s:[[600,750],[840,1050]]},
+  SA: {name:"Tadawul",      tz:"Asia/Riyadh",         s:[[600,900]],  days:[0,1,2,3,4]},
+  IL: {name:"Tel Aviv",     tz:"Asia/Jerusalem",      s:[[570,1005]], days:[0,1,2,3,4]}
+};
+
+var CRYPTOS = {BTC:1,ETH:1,SOL:1,XRP:1,ADA:1,DOGE:1,LTC:1,BNB:1,AVAX:1,DOT:1,MATIC:1,LINK:1,USDT:1,USDC:1};
+var WEEKDAYS = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+
+function clockIn(tz){
+  try {
+    var parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date());
+    var o = {};
+    parts.forEach(function(p){ o[p.type] = p.value; });
+    var wd = WEEKDAYS[o.weekday];
+    if (wd == null) return null;
+    return {wd: wd, min: parseInt(o.hour, 10) * 60 + parseInt(o.minute, 10),
+            hhmm: o.hour + ":" + o.minute};
+  } catch(e){ return null; }        // no Intl time zones — don't guess
+}
+
+/* -> {open:true|false, label:"Hong Kong"} or null when we can't tell */
+function marketState(sym){
+  var s = String(sym || "").toUpperCase().trim();
+  var exch = "", rest = s;
+  var c = s.indexOf(":");
+  if (c > -1){ exch = s.slice(0, c); rest = s.slice(c + 1); }
+
+  // Crypto never stops.
+  var cryptoBase = rest.replace(/-?USD$/, "").replace(/^\./, "");
+  if ((exch === "CURRENCY" || /-USD$/.test(s)) && CRYPTOS[cryptoBase])
+    return {open: true, label: "Crypto", always: true};
+
+  // Spot FX runs from Sunday evening to Friday evening, New York time.
+  if (exch === "CURRENCY"){
+    var ny = clockIn("America/New_York");
+    if (!ny) return null;
+    var shut = (ny.wd === 6) ||
+               (ny.wd === 0 && ny.min < 1020) ||
+               (ny.wd === 5 && ny.min >= 1020);
+    return {open: !shut, label: "Currencies"};
+  }
+
+  var key = MARKET_OF[exch];
+  if (!key) return null;                       // unknown exchange — leave it be
+  var m = MARKET_HOURS[key];
+  var now = clockIn(m.tz);
+  if (!now) return null;
+
+  var days = m.days || [1,2,3,4,5];
+  var open = false;
+  if (days.indexOf(now.wd) > -1){
+    for (var i = 0; i < m.s.length; i++){
+      if (now.min >= m.s[i][0] && now.min < m.s[i][1]){ open = true; break; }
+    }
+  }
+  return {open: open, label: m.name, local: now.hhmm};
+}
+
+/* =====================================================================
+   Display
+   ===================================================================== */
+
+/* Google Finance uses TICKER:EXCHANGE, the reverse of the sheet's order. */
+function googleFinanceUrl(sym){
+  var s = String(sym || "").trim();
+  var c = s.indexOf(":");
+  if (c < 0) return "https://www.google.com/finance/quote/" + encodeURIComponent(s);
+  var exch = s.slice(0, c), tick = s.slice(c + 1);
+  if (exch.toUpperCase() === "CURRENCY" && /^[A-Za-z]{6}$/.test(tick))
+    tick = tick.slice(0, 3) + "-" + tick.slice(3);       // EURUSD -> EUR-USD
+  else
+    tick = tick + ":" + exch;
+  return "https://www.google.com/finance/quote/" + encodeURIComponent(tick).replace(/%3A/gi, ":");
+}
+
+function tickerOf(sym){
+  var s = String(sym||"").trim(), i = s.indexOf(":");
+  return i > -1 ? s.slice(i+1) : s;             // NASDAQ:AAPL -> AAPL
+}
+function isIndexish(sym){
+  var s = String(sym||"").toUpperCase();
+  return /^INDEX/.test(s) || s.indexOf(":.") > -1 || s.charAt(0) === "^";
+}
+function isCcyPair(sym){ return /^CURRENCY:/i.test(String(sym||"")); }
+
+var BRAND = {
+  AAPL:"#555b60", GOOG:"#ea4335", GOOGL:"#ea4335", AMZN:"#b1670f", TSLA:"#e31937",
+  MSFT:"#00a4ef", META:"#0866ff", NFLX:"#e50914", NVDA:"#76b900", AMD:"#ed1c24",
+  ASML:"#0b5fa5", ADYEN:"#0abf53", SAP:"#0faaff", INTC:"#0068b5", ORCL:"#c74634",
+  IBM:"#0f62fe", CPNG:"#ae0d1b", SHOP:"#5e8e3e", SPOT:"#1db954", UBER:"#111111"
+};
+
+function badge(sym){
+  var t = tickerOf(sym).toUpperCase();
+  if (isIndexish(sym)) return {label:"INDEX", plain:true};
+  if (isCcyPair(sym))  return {label:t.replace(/USD$/,"").slice(0,5), plain:true};
+  var base = t.split(".")[0].slice(0,5);
+  if (BRAND[base]) return {label:base, color:BRAND[base]};
+  var h = 0;
+  for (var i = 0; i < base.length; i++) h = (h*31 + base.charCodeAt(i)) % 360;
+  return {label:base, color:"hsl(" + h + ",42%,42%)"};
+}
+function badgeHTML(b){
+  return '<span class="badge ' + (b.plain ? "plain" : "") + '"' +
+         (b.color ? ' style="background:' + b.color + '"' : "") + '>' + esc(b.label) + '</span>';
+}
+
+/* dp: omit for prices (sub-unit instruments get 4 decimals); pass 2 for a
+   daily change, where -0.03 should not print as -0.0300. */
+function money(v, ccy, dp){
+  if (v == null || !isFinite(v)) return "—";
+  if (dp == null) dp = Math.abs(v) < 1 ? 4 : 2;
+  var s = Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  var sign = v < 0 ? "-" : "";
+  if (!ccy) return sign + s;
+  if (ccy === "USD") return sign + "$" + s;
+  if (ccy === "EUR") return sign + "€" + s;
+  if (ccy === "GBP") return sign + "£" + s;
+  if (ccy === "JPY") return sign + "¥" + s;
+  return sign + s + " " + ccy;
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+/* =====================================================================
+   State + rendering
+   ===================================================================== */
+var tabs = [], active = 0, data = [], sortKey = "pct", sortDir = -1, loading = false;
+var wantTitle = null;                    // reselect the same list after a reload
+
+try {
+  var saved = JSON.parse(recall("cw.sort") || "null");
+  if (saved && saved.key){ sortKey = saved.key; sortDir = saved.dir; }
+  wantTitle = recall("cw.tab");
+} catch(e){}
+
+function selectTab(i){
+  active = Math.max(0, Math.min(i, tabs.length - 1));
+  data = tabs.length ? tabs[active].items : [];
+  document.getElementById("title").textContent = tabs.length ? tabs[active].title : "Watchlist";
+  if (tabs.length) remember("cw.tab", tabs[active].title);
+  renderTabs();
+  render();
+  setCount();
+}
+
+function renderTabs(){
+  var host = document.getElementById("tabs");
+  if (tabs.length < 2){ host.innerHTML = ""; return; }   // no point in one tab
+  host.innerHTML = "";
+  tabs.forEach(function(t, i){
+    var btn = document.createElement("button");
+    btn.textContent = t.title;
+    if (i === active) btn.className = "on";
+    btn.onclick = function(){ selectTab(i); };
+    host.appendChild(btn);
+  });
+}
+
+function sorted(){
+  if (sortKey === "sheet") return data.slice();
+  var d = data.slice();
+  d.sort(function(a, b){
+    var r = (sortKey === "name") ? a.name.localeCompare(b.name)
+                                 : (a[sortKey] || 0) - (b[sortKey] || 0);
+    return r * sortDir;
+  });
+  return d;
+}
+
+function render(){
+  var host = document.getElementById("body");
+  if (!data.length){ host.innerHTML = ""; return; }
+
+  var rows = sorted();
+
+  host.innerHTML = rows.map(function(q){
+    var cls = q.pct > 0 ? "up" : (q.pct < 0 ? "down" : "flat");
+    var arrow = q.pct > 0 ? "↑" : (q.pct < 0 ? "↓" : "→");
+    var ccy = (isIndexish(q.symbol) || isCcyPair(q.symbol)) ? "" : q.ccy;
+    var dp  = (Math.abs(q.change) < 0.01 && q.change !== 0) ? 4 : 2;
+
+    var mkt = marketState(q.symbol);
+    var shut = mkt && !mkt.open;
+    var tip = q.symbol;
+    if (q.lists && q.lists.length) tip += " · in " + q.lists.join(", ");
+    if (mkt && !mkt.always){
+      tip += " · " + mkt.label + (mkt.open ? " open" : " closed") +
+             (mkt.local ? " (" + mkt.local + " there)" : "");
+    }
+    var url = googleFinanceUrl(q.symbol);
+
+    return '<div class="row' + (shut ? " shut" : "") + '" data-sym="' + esc(q.symbol) +
+             '" data-url="' + esc(url) + '" title="' + esc(tip) + '">' +
+      badgeHTML(badge(q.symbol)) +
+      '<span class="name"><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(q.name) + '</a></span>' +
+      '<span class="num">' + money(q.price, ccy) + '</span>' +
+      '<span class="num chg ' + cls + '">' + (q.change > 0 ? "+" : "") +
+        money(q.change, ccy, dp) + '</span>' +
+      '<span class="pctcell"><span class="pill ' + cls + '">' + arrow + " " +
+        Math.abs(q.pct).toFixed(2) + '%</span></span>' +
+    '</div>';
+  }).join("");
+
+  // The summary belongs to the combined view. With a single list, that list
+  // is the combined view, so it gets it too.
+  var t = tabs[active];
+  if (tabs.length === 1 || (t && t.isAll)) renderSummary(rows);
+  else document.getElementById("summary").innerHTML = "";
+
+  var caret = sortDir === 1 ? "▲" : "▼";
+  Array.prototype.forEach.call(document.querySelectorAll(".hrow span[data-sort]"), function(s){
+    var on = s.getAttribute("data-sort") === sortKey;
+    s.className = s.className.replace(/\s*on\b/, "") + (on ? " on" : "");
+    s.innerHTML = s.getAttribute("data-label") +
+                  (on ? '<span class="caret">' + caret + '</span>' : "");
+  });
+}
+
+function renderSummary(rows){
+  var host = document.getElementById("summary");
+  if (!rows || !rows.length){ host.innerHTML = ""; return; }
+
+  var up = 0, down = 0, sum = 0, best = null, worst = null;
+  var open = {}, closed = {};
+
+  rows.forEach(function(q){
+    if (q.pct > 0) up++; else if (q.pct < 0) down++;
+    sum += q.pct;
+    if (!best  || q.pct > best.pct)  best  = q;
+    if (!worst || q.pct < worst.pct) worst = q;
+    var m = marketState(q.symbol);
+    if (m && !m.always){ (m.open ? open : closed)[m.label] = 1; }
+  });
+
+  var avg = sum / rows.length;
+  var avgCls = avg > 0 ? "up" : (avg < 0 ? "down" : "");
+  function pct(v){ return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) + "%"; }
+  function cls(v){ return v > 0 ? "up" : (v < 0 ? "down" : ""); }
+
+  var bits = [
+    '<span><b class="up">' + up + '</b> up · <b class="down">' + down + '</b> down</span>',
+    '<span>average <b class="' + avgCls + '">' + pct(avg) + '</b></span>'
+  ];
+  if (best && best.pct > 0)
+    bits.push('<span>best ' + esc(best.name) + ' <b class="up">' + pct(best.pct) + '</b></span>');
+  if (worst && worst.pct < 0)
+    bits.push('<span>worst ' + esc(worst.name) + ' <b class="down">' + pct(worst.pct) + '</b></span>');
+
+  var nOpen = Object.keys(open).length, nShut = Object.keys(closed).length;
+  if (nOpen + nShut > 0){
+    bits.push('<span title="Regular trading hours only — public holidays are not known to this page.">' +
+              (nOpen ? '<b>' + Object.keys(open).sort().join(", ") + '</b> open' : '<b>no markets</b> open') +
+              (nShut ? ' · ' + nShut + ' closed' : '') + '</span>');
+  }
+  host.innerHTML = bits.join("");
+}
+
+function message(html){
+  document.getElementById("body").innerHTML = '<div class="msg">' + html + '</div>';
+  document.getElementById("summary").innerHTML = "";
+}
+function setFoot(t){ document.getElementById("foot").textContent = t; }
+function showHeaders(on){
+  document.getElementById("hrow").style.visibility = on ? "visible" : "hidden";
+}
+
+/* =====================================================================
+   Load — once on open, and whenever you press Refresh
+   ===================================================================== */
+var loadedAt = null;
+
+function setCount(){
+  if (!data.length) return;
+  var when = loadedAt ? loadedAt.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+  var t = tabs[active];
+  var where = "";
+  if (t && t.isAll) where = " across " + t.listCount + " lists";
+  else if (tabs.length > 1) where = " in " + t.title;
+
+  setFoot(data.length + " " + (data.length === 1 ? "position" : "positions") + where +
+          (when ? " · loaded " + when : "") +
+          " · sheet values are ~15–20 min delayed");
+}
+
+function load(done){
+  if (loading) return;
+  if (!SHEET_ID){ if (done) done(null); return; }   // nothing chosen yet
+  loading = true;
+  setBusy(true);
+  if (!data.length){ message("Loading…"); showHeaders(false); }
+  setFoot("Loading…");
+
+  fetchAllTabs().then(function(found){
+    if (!found.length) throw new Error(
+      "no readable lists came back — check the sheet is still shared with anyone who has the link");
+
+    tabs = found;
+    if (found.length > 1) tabs = [buildAllTab(found)].concat(found);
+    loadedAt = new Date();
+
+    // Keep showing whichever list you were on, by name.
+    var idx = 0;
+    if (wantTitle){
+      for (var i = 0; i < tabs.length; i++) if (tabs[i].title === wantTitle){ idx = i; break; }
+    }
+    showHeaders(true);
+    selectTab(idx);
+    finish(null);
+  }).catch(function(e){
+    var msg = (e && e.message) ? e.message : "something went wrong";
+    if (data.length){
+      setFoot("Couldn't reload (" + msg + ") — showing the data from the last successful load.");
+    } else {
+      showHeaders(false);
+      message("<b>Couldn't read the sheet.</b><br>" + esc(msg) +
+              "<br><button onclick=\"load()\">Try again</button>");
+      setFoot("");
+    }
+    finish(e && e.message ? e : new Error(msg));
+  });
+
+  function finish(err){
+    loading = false;
+    setBusy(false);
+    if (done) done(err || null);
+  }
+}
+
+function setBusy(on){
+  ["refresh","sheetLoad","sheetReset"].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.disabled = on;
+  });
+}
+
+/* =====================================================================
+   Theme — Auto follows the operating system; Light and Dark override it
+   ===================================================================== */
+var THEMES = ["auto", "light", "dark"];
+var theme = "auto";
+try {
+  var savedTheme = recall("cw.theme");
+  if (THEMES.indexOf(savedTheme) > -1) theme = savedTheme;
+} catch(e){}
+
+function prefersDark(){
+  return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+
+function applyTheme(){
+  var resolved = (theme === "auto") ? (prefersDark() ? "dark" : "light") : theme;
+  document.documentElement.setAttribute("data-theme", resolved);
+  var btn = document.getElementById("theme");
+  if (btn) btn.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+}
+
+applyTheme();
+
+if (window.matchMedia){
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", function(){ if (theme === "auto") applyTheme(); });
+  } catch(e){}     // older browsers
+}
+
+document.getElementById("theme").onclick = function(){
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  remember("cw.theme", theme);
+  applyTheme();
+};
+
+/* =====================================================================
+   Wiring
+   ===================================================================== */
+Array.prototype.forEach.call(document.querySelectorAll(".hrow span[data-sort]"), function(s){
+  s.setAttribute("data-label", s.textContent);
+  s.onclick = function(){
+    var k = s.getAttribute("data-sort");
+    if (sortKey === k) sortDir = -sortDir;
+    else { sortKey = k; sortDir = (k === "name") ? 1 : -1; }   // biggest movers first
+    remember("cw.sort", JSON.stringify({key:sortKey, dir:sortDir}));
+    render();
+  };
+});
+/* Click anywhere on a row to open it on Google Finance. The company name is
+   a real link too, so keyboard and middle-click work as you'd expect. */
+document.getElementById("body").addEventListener("click", function(e){
+  if (e.target.closest("a")) return;                  // the link handles itself
+  var row = e.target.closest(".row");
+  if (!row) return;
+  var url = row.getAttribute("data-url");
+  if (url) window.open(url, "_blank", "noopener");
+});
+
+/* Markets open and close while the page sits there; recheck when you come
+   back to the tab. No network involved — it's just the clock. */
+window.addEventListener("focus", function(){ if (data.length) render(); });
+
+window.addEventListener("keydown", function(e){        // ←/→ switch lists
+  if (tabs.length < 2 || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === "ArrowRight") selectTab((active + 1) % tabs.length);
+  if (e.key === "ArrowLeft")  selectTab((active - 1 + tabs.length) % tabs.length);
+});
+document.getElementById("refresh").onclick = function(){
+  if (SHEET_ID) load();
+};
+
+/* ---------------------------------------------------------------------
+   Changing the sheet
+   --------------------------------------------------------------------- */
+var urlBox   = document.getElementById("sheetUrl");
+var loadBtn  = document.getElementById("sheetLoad");
+var demoBtn  = document.getElementById("sheetDemo");
+var errBox   = document.getElementById("sheetErr");
+var nameBox  = document.getElementById("sheetName");
+
+function sheetError(msg){ errBox.textContent = msg || ""; }
+
+/* ---- the name shown at the top --------------------------------------
+   Google's data endpoint doesn't hand out the spreadsheet's own title,
+   so this is a label you set yourself: click it and type. It's stored
+   per sheet, so each sheet keeps its own name. */
+var NAME_PLACEHOLDER = "Click to name this sheet";
+
+function nameKey(){ return SHEET_ID ? "cw.name." + SHEET_ID : null; }
+
+function showName(){
+  var stored = nameKey() ? recall(nameKey()) : null;
+  if (stored){
+    nameBox.textContent = stored;
+    nameBox.className = "sheetname";
+    document.title = stored;
+  } else {
+    nameBox.textContent = SHEET_ID ? NAME_PLACEHOLDER : "";
+    nameBox.className = "sheetname unset";
+    document.title = "Watchlist";
+  }
+}
+
+function saveName(){
+  var text = nameBox.textContent.replace(/\s+/g, " ").trim();
+  if (text === NAME_PLACEHOLDER) text = "";
+  if (!nameKey()) { showName(); return; }
+  if (text) remember(nameKey(), text.slice(0, 80));
+  else forget(nameKey());
+  showName();
+}
+
+nameBox.addEventListener("focus", function(){
+  if (nameBox.classList.contains("unset")){
+    nameBox.textContent = "";
+    nameBox.className = "sheetname";
+  }
+});
+nameBox.addEventListener("blur", saveName);
+nameBox.addEventListener("keydown", function(e){
+  if (e.key === "Enter"){ e.preventDefault(); nameBox.blur(); }
+  if (e.key === "Escape"){ showName(); nameBox.blur(); }
+});
+
+/* ---- the empty state ------------------------------------------------ */
+function showEmpty(){
+  tabs = []; data = []; active = 0; loadedAt = null;
+  SHEET_ID = ""; sheetInput = "";
+  urlBox.value = "";
+  renderTabs();
+  showHeaders(false);
+  document.getElementById("title").textContent = "Watchlist";
+  setFoot("");
+  showName();
+  message("<b>No sheet loaded.</b><br>Paste a Google Sheets link above and press Load, " +
+          "or press <b>Demo sheet</b> to see an example.");
+}
+
+/* ---- loading a sheet ------------------------------------------------ */
+var prevId = "";                      // last sheet id that loaded successfully
+
+function applySheet(text, persist){
+  var id;
+  try { id = extractSheetId(text); }
+  catch(e){ sheetError(e.message); return; }
+
+  sheetError("");
+  var changed = (id !== SHEET_ID);
+  SHEET_ID   = id;
+  sheetInput = String(text).trim();
+  urlBox.value = sheetInput;
+
+  if (persist){
+    remember("cw.sheet", sheetInput);
+    if (changed) forget("cw.tab");            // list names belong to the old sheet
+    if (changed) wantTitle = null;
+  }
+  showName();
+
+  // Hold on to what's showing: if the new sheet can't be read, put it back
+  // rather than leaving you staring at an error with your data gone.
+  var prev = {tabs:tabs, data:data, active:active, at:loadedAt, id:prevId};
+  if (changed){ tabs = []; data = []; active = 0; }
+
+  load(function(err){
+    if (!err){ prevId = SHEET_ID; return; }
+    if (!prev.tabs.length) return;
+    tabs = prev.tabs; data = prev.data; active = prev.active; loadedAt = prev.at;
+    SHEET_ID = prev.id || SHEET_ID;
+    sheetError("Couldn't read that sheet (" + err.message + ") — still showing the previous one.");
+    showHeaders(true);
+    showName();
+    selectTab(active);
+  });
+}
+
+loadBtn.onclick = function(){ applySheet(urlBox.value, true); };
+demoBtn.onclick = function(){
+  applySheet(DEMO_SHEET, true);
+  if (nameKey() && !recall(nameKey())) remember(nameKey(), "Demo sheet");
+  showName();
+};
+urlBox.addEventListener("keydown", function(e){
+  if (e.key === "Enter") applySheet(urlBox.value, true);
+});
+
+/* Start: only load if a sheet was used last time. */
+if (sheetInput){
+  urlBox.value = sheetInput;
+  applySheet(sheetInput, false);
+} else {
+  showEmpty();
+}
+</script>
+</body>
+</html>
