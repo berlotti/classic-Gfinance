@@ -29,6 +29,17 @@
   .wrap{max-width:880px;margin:0 auto}
   .card{background:var(--card);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
 
+  /* Shown only while the demo sheet is loaded. */
+  .demonote{
+    display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+    margin:0 0 12px;padding:9px 14px;border-radius:8px;
+    background:var(--card);border:1px solid var(--line);
+    font-size:13px;color:var(--dim);
+  }
+  .demonote[hidden]{display:none}
+  .demonote a{color:var(--blue);text-decoration:none;font-weight:500}
+  .demonote a:hover{text-decoration:underline}
+
   .sheetname{
     font-size:20px;font-weight:500;margin:0 0 10px;padding:3px 7px;border-radius:6px;
     color:var(--text);outline:none;display:inline-block;min-width:80px;cursor:text;
@@ -132,8 +143,13 @@
   }
   .disclaimer p{margin:0 0 7px}
   .disclaimer b{color:var(--dim);font-weight:600}
+  .disclaimer a{color:inherit;text-decoration:underline}
+  .disclaimer a:hover{color:var(--text)}
+  .colophon{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
   .msg{padding:36px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.7}
   .msg b{color:var(--text)}
+  .msg a{color:var(--blue);text-decoration:none;font-size:13px}
+  .msg a:hover{text-decoration:underline}
   .msg button{
     margin-top:14px;background:var(--blue);color:#fff;border:none;border-radius:999px;
     padding:9px 20px;font:inherit;font-size:13px;cursor:pointer;
@@ -151,6 +167,11 @@
 </head>
 <body>
 <div class="wrap">
+<div class="demonote" id="demoNote" hidden>
+  <span>You're looking at the example sheet.</span>
+  <a href="https://github.com/berlotti/classic-Gfinance/blob/main/README.md#making-your-own-sheet"
+     target="_blank" rel="noopener noreferrer">Set up your own lists in Google Sheets →</a>
+</div>
 <div><h1 class="sheetname" id="sheetName" contenteditable="true" spellcheck="false"></h1></div>
 <div class="sheetbar">
   <input id="sheetUrl" type="text" spellcheck="false" autocomplete="off"
@@ -204,6 +225,17 @@
   and is subject to their terms; this page is not affiliated with, endorsed by or supported by
   Google, any exchange or any data provider. It is provided as is, without warranty of any kind,
   and is intended for personal use. Use of the data is at your own risk.</p>
+
+  <p class="colophon"><b>Classic Watchlist.</b> One HTML file, no dependencies, no tracking — the
+  only request it makes is to your own Google Sheet.
+  Source and documentation on <a href="https://github.com/berlotti/classic-Gfinance"
+  target="_blank" rel="noopener noreferrer">GitHub</a> ·
+  Hosted at <a href="https://berlotti.github.io/classic-Gfinance/"
+  target="_blank" rel="noopener noreferrer">berlotti.github.io/classic-Gfinance</a> ·
+  <a href="https://github.com/berlotti/classic-Gfinance/blob/main/README.md#making-your-own-sheet"
+  target="_blank" rel="noopener noreferrer">How to use your own sheet</a> ·
+  <a href="https://buymeacoffee.com/berlotti"
+  target="_blank" rel="noopener noreferrer">Buy me a coffee</a></p>
 </div>
 </div>
 
@@ -213,6 +245,7 @@
    link-shared rather than published to the web.
    ===================================================================== */
 var DEMO_SHEET = "https://docs.google.com/spreadsheets/d/1UvTu-ZDs8euxx4h5qWev9wBgc-MBPdy7ZzE9ePHGEh0/edit?usp=sharing";
+var DEMO_ID = "1UvTu-ZDs8euxx4h5qWev9wBgc-MBPdy7ZzE9ePHGEh0";
 
 /* ---------------------------------------------------------------------
    Remembering things between visits.
@@ -489,11 +522,14 @@ function fetchTab(n){
   return new Promise(function(resolve){
     loadViaScript(String(n),
       function(resp){
-        var t = null;
-        try { t = readTab(resp, n); } catch(e){ t = null; }   // empty tab → ignore
-        resolve(t);
+        try { resolve(readTab(resp, n)); }
+        catch(e){
+          // The tab answered but we couldn't make sense of it. Keep the reason:
+          // "no price column" is far more useful than a sharing error later on.
+          resolve({parseError: e.message || "couldn't be read", n: n});
+        }
       },
-      function(){ resolve(null); }
+      function(){ resolve(null); }        // never answered at all
     );
   });
 }
@@ -520,26 +556,28 @@ function buildAllTab(lists){
 }
 
 function fetchAllTabs(){
-  var found = [];
+  var found = [], firstProblem = "";
 
   function batch(start){
     var jobs = [];
     for (var n = start; n < start + BATCH && n <= MAX_TABS; n++) jobs.push(fetchTab(n));
     return Promise.all(jobs).then(function(res){
-      var lastWasReal = false;
       res.forEach(function(t){
         if (!t) return;
+        if (t.parseError){
+          if (!firstProblem) firstProblem = t.parseError;
+          return;
+        }
         if (found.length && t.sig === found[0].sig) return;   // fallback to tab 1
         if (found.some(function(f){ return f.sig === t.sig; })) return;
         found.push(t);
-        lastWasReal = true;
       });
       var next = start + BATCH;
       // Only keep probing if the final slot of this batch was a real tab.
       var lastSlotReal = res.length && res[res.length-1] &&
                          found.some(function(f){ return f.n === start + res.length - 1; });
       if (lastSlotReal && next <= MAX_TABS) return batch(next);
-      return found;
+      return {tabs: found, problem: firstProblem};
     });
   }
   return batch(1);
@@ -790,16 +828,13 @@ function render(){
 
     var mkt = marketState(q.symbol);
     var shut = mkt && !mkt.open;
-    var tip = q.symbol;
-    if (q.lists && q.lists.length) tip += " · in " + q.lists.join(", ");
-    if (mkt && !mkt.always){
-      tip += " · " + mkt.label + (mkt.open ? " open" : " closed") +
-             (mkt.local ? " (" + mkt.local + " there)" : "");
-    }
+    var base = q.symbol;
+    if (q.lists && q.lists.length) base += " · in " + q.lists.join(", ");
     var url = googleFinanceUrl(q.symbol);
 
     return '<div class="row' + (shut ? " shut" : "") + '" data-sym="' + esc(q.symbol) +
-             '" data-url="' + esc(url) + '" title="' + esc(tip) + '">' +
+             '" data-url="' + esc(url) + '" data-tip="' + esc(base) +
+             '" title="' + esc(base + marketSuffix(mkt)) + '">' +
       badgeHTML(badge(q.symbol)) +
       '<span class="name"><a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
         esc(q.name) + '</a></span>' +
@@ -824,6 +859,53 @@ function render(){
     s.innerHTML = s.getAttribute("data-label") +
                   (on ? '<span class="caret">' + caret + '</span>' : "");
   });
+}
+
+function marketSuffix(mkt){
+  if (!mkt || mkt.always) return "";
+  return " · " + mkt.label + (mkt.open ? " open" : " closed") +
+         (mkt.local ? " (" + mkt.local + " there)" : "");
+}
+
+/* ---------------------------------------------------------------------
+   Keep the greying honest.
+
+   Whether an exchange is trading depends on the clock, not on the data,
+   so it has to be re-evaluated while the page sits open — otherwise a
+   market that opens at 09:30 leaves its rows greyed until you reload.
+   This only touches CSS classes and tooltips; it never refetches.
+   --------------------------------------------------------------------- */
+function refreshMarketStyling(){
+  var rows = document.querySelectorAll("#body .row");
+  if (!rows.length) return;
+  var changed = false;
+
+  for (var i = 0; i < rows.length; i++){
+    var el  = rows[i];
+    var mkt = marketState(el.getAttribute("data-sym"));
+    var shut = !!(mkt && !mkt.open);
+    if (el.classList.contains("shut") !== shut){
+      el.classList.toggle("shut", shut);
+      changed = true;
+    }
+    el.setAttribute("title", (el.getAttribute("data-tip") || "") + marketSuffix(mkt));
+  }
+
+  // The summary carries an "X open · Y closed" line, so it moves with them.
+  if (changed && document.getElementById("summary").innerHTML) renderSummary(sorted());
+}
+
+/* Check on the next minute boundary, then every minute, so a row clears
+   within a few seconds of the opening bell rather than up to a minute late. */
+var marketTimer = null;
+function startMarketClock(){
+  if (marketTimer) clearTimeout(marketTimer);
+  var d = new Date();
+  var msToNextMinute = 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 250;
+  marketTimer = setTimeout(function(){
+    refreshMarketStyling();
+    startMarketClock();                 // re-align every minute
+  }, msToNextMinute);
 }
 
 function renderSummary(rows){
@@ -900,9 +982,13 @@ function load(done){
   if (!data.length){ message("Loading…"); showHeaders(false); }
   setFoot("Loading…");
 
-  fetchAllTabs().then(function(found){
+  fetchAllTabs().then(function(result){
+    var found = result.tabs;
     if (!found.length) throw new Error(
-      "no readable lists came back — check the sheet is still shared with anyone who has the link");
+      result.problem                       // the sheet replied but didn't make sense
+        ? result.problem + " — check the first tab has your watchlist name in A1, no header row, " +
+          "and a column of prices"
+        : "no readable lists came back — check the sheet is still shared with anyone who has the link");
 
     tabs = found;
     if (found.length > 1) tabs = [buildAllTab(found)].concat(found);
@@ -1002,9 +1088,12 @@ document.getElementById("body").addEventListener("click", function(e){
   if (url) window.open(url, "_blank", "noopener");
 });
 
-/* Markets open and close while the page sits there; recheck when you come
-   back to the tab. No network involved — it's just the clock. */
-window.addEventListener("focus", function(){ if (data.length) render(); });
+/* Also recheck the moment you come back to the tab, in case the browser
+   throttled the timer while it was in the background. Still no network. */
+window.addEventListener("focus", refreshMarketStyling);
+document.addEventListener("visibilitychange", function(){
+  if (!document.hidden) refreshMarketStyling();
+});
 
 window.addEventListener("keydown", function(e){        // ←/→ switch lists
   if (tabs.length < 2 || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1033,6 +1122,11 @@ function sheetError(msg){ errBox.textContent = msg || ""; }
 var NAME_PLACEHOLDER = "Click to name this sheet";
 
 function nameKey(){ return SHEET_ID ? "cw.name." + SHEET_ID : null; }
+
+function updateDemoNote(){
+  var el = document.getElementById("demoNote");
+  if (el) el.hidden = (SHEET_ID !== DEMO_ID);
+}
 
 function showName(){
   var stored = nameKey() ? recall(nameKey()) : null;
@@ -1078,8 +1172,11 @@ function showEmpty(){
   document.getElementById("title").textContent = "Watchlist";
   setFoot("");
   showName();
+  updateDemoNote();
   message("<b>No sheet loaded.</b><br>Paste a Google Sheets link above and press Load, " +
-          "or press <b>Demo sheet</b> to see an example.");
+          "or press <b>Demo sheet</b> to see an example." +
+          "<br><a href=\"https://github.com/berlotti/classic-Gfinance/blob/main/README.md#making-your-own-sheet\" " +
+          "target=\"_blank\" rel=\"noopener noreferrer\">How to set up your own sheet</a>");
 }
 
 /* ---- loading a sheet ------------------------------------------------ */
@@ -1102,6 +1199,7 @@ function applySheet(text, persist){
     if (changed) wantTitle = null;
   }
   showName();
+  updateDemoNote();
 
   // Hold on to what's showing: if the new sheet can't be read, put it back
   // rather than leaving you staring at an error with your data gone.
@@ -1116,6 +1214,7 @@ function applySheet(text, persist){
     sheetError("Couldn't read that sheet (" + err.message + ") — still showing the previous one.");
     showHeaders(true);
     showName();
+    updateDemoNote();
     selectTab(active);
   });
 }
@@ -1129,6 +1228,8 @@ demoBtn.onclick = function(){
 urlBox.addEventListener("keydown", function(e){
   if (e.key === "Enter") applySheet(urlBox.value, true);
 });
+
+startMarketClock();
 
 /* Start: only load if a sheet was used last time. */
 if (sheetInput){

@@ -2,13 +2,15 @@
 
 A single-file HTML page that shows your stock watchlists in the style of the **old Google Finance** — ticker badge, company name, price, daily change, and a coloured percentage pill, one row per holding.
 
-It reads its data from a Google Sheet that you own. No account, no API key, no server, no build step. Run it on [Github itself](https://berlotti.github.io/classic-Gfinance) or [download the file](https://github.com/berlotti/classic-Gfinance/tree/main/docs), open it in a browser, done.
+**[Open it here](https://berlotti.github.io/classic-Gfinance/)** · **[Source on GitHub](https://github.com/berlotti/classic-Gfinance)**
+
+It reads its data from a Google Sheet that you own. No account, no API key, no server, no build step. Use the hosted page, or download `index.html` and open it from your desktop — both work identically.
 
 ---
 
 ## Why this exists
 
-Google retired the old Google Finance layout in favour of a AI-heavy design built around news, discovery and charts. That is a reasonable product for browsing. It is a worse product for the thing a lot of people actually used the old one for: **glancing at a list of tickers and seeing, in one screen, what moved today.**
+Google retired the old Google Finance layout in favour of a card-heavy design built around news, discovery and charts. That is a reasonable product for browsing. It is a worse product for the thing a lot of people actually used the old one for: **glancing at a list of tickers and seeing, in one screen, what moved today.**
 
 The old watchlist put roughly a dozen holdings above the fold in a dense table you could read in two seconds. The replacement spends that space on other things.
 
@@ -16,123 +18,108 @@ This page brings that view back, with three deliberate differences:
 
 - **Your data lives in your spreadsheet**, not in a product that can be redesigned out from under you. If this page ever stops working, your watchlist is still a Google Sheet.
 - **It loads once.** No live ticking, no polling, no attention-grabbing. Open it, read it, close it.
-- **It is one HTML file.** You can read the whole thing, use it on [Github pages])https://berlotti.github.io/classic-Gfinance), or host it yourself, or keep it on your desktop forever.
+- **It is one HTML file.** You can read the whole thing, host it anywhere, or keep it on your desktop forever.
 
 There is no official Google Finance API — it was deprecated in 2011 and shut down in 2012. The only supported way to get Google's finance data is the `GOOGLEFINANCE()` function inside Google Sheets, which is exactly what this setup uses.
 
 ---
 
-## Quick start (2 minutes)
+## Quick start
 
-1. Save `index.html` somewhere convenient and open it in your browser. Rename it if you want.
+1. Open **[berlotti.github.io/classic-Gfinance](https://berlotti.github.io/classic-Gfinance/)**, or download `index.html` and open it in your browser.
 2. Press **Demo sheet** to see it working with an example spreadsheet.
-3. When you want your own data, follow *Making your own sheet* below, then paste your sheet's link into the box at the top and press **Load**.
+3. For your own data, follow [Making your own sheet](#making-your-own-sheet) below.
 
-The page remembers the last sheet you used, so from then on it just opens to your watchlist. Nothing is shown on a fresh browser until you load a sheet.
+The page remembers the last sheet you used, so from then on it opens straight to your watchlist. A fresh browser shows nothing until you load a sheet.
 
 ---
 
 ## Making your own sheet
 
-The easiest route is to copy the demo sheet and edit it, so the layout is already correct.
+About ten minutes. You need a Google account and nothing else.
 
 ### 1. Copy the demo sheet
 
-Open the demo sheet:
+The fastest route is to copy a sheet that's already laid out correctly:
 
 ```
 https://docs.google.com/spreadsheets/d/1UvTu-ZDs8euxx4h5qWev9wBgc-MBPdy7ZzE9ePHGEh0/edit?usp=sharing
 ```
 
-Then **File → Make a copy**. You now own the copy and can edit it freely.
+**File → Make a copy.** You now own the copy and can edit it freely. (Prefer to start empty? See [Building a sheet from scratch](#building-a-sheet-from-scratch).)
 
 ### 2. Put your own tickers in
 
-In each tab, replace the tickers in **column A**. Every other column is a formula that follows column A, so once a ticker is in place the rest fills itself in. To add rows, drag the formulas down from the row above.
+In each tab, replace the tickers in **column A**. Every other column is a formula that reads column A, so once a ticker is in place the rest of the row fills itself in. To add a holding, type the ticker in the next empty cell of column A and drag the formulas down from the row above.
 
-Ticker format is `EXCHANGE:TICKER` — the same thing Google Finance shows in its URL:
+Tickers use the `EXCHANGE:TICKER` form Google Finance itself uses — look the stock up on google.com/finance and read it off the page:
 
-| What | Example |
-|---|---|
-| US stock | `NASDAQ:AAPL`, `NYSE:V` |
-| European stock | `AMS:ASML`, `ETR:SAP`, `LON:SHEL` |
-| Hong Kong | `HKG:0700` |
-| Index | `INDEXSP:.INX`, `INDEXDJX:.DJI`, `INDEXDB:DAX` |
-| Crypto / FX | `CURRENCY:BTCUSD`, `CURRENCY:EURUSD` |
+| Market | Prefix | Example |
+|---|---|---|
+| Nasdaq | `NASDAQ:` | `NASDAQ:AAPL` |
+| NYSE | `NYSE:` | `NYSE:V` |
+| US over-the-counter | `OTCMKTS:` | `OTCMKTS:TCEHY` |
+| Amsterdam | `AMS:` | `AMS:ASML` |
+| Paris | `EPA:` | `EPA:MC` |
+| Frankfurt / Xetra | `ETR:` | `ETR:SAP` |
+| London | `LON:` | `LON:SHEL` |
+| Milan | `BIT:` | `BIT:ENI` |
+| Zurich | `SWX:` | `SWX:NESN` |
+| Hong Kong | `HKG:` | `HKG:0700` |
+| Tokyo | `TYO:` | `TYO:7203` |
+| Toronto | `TSE:` | `TSE:RY` |
+| Australia | `ASX:` | `ASX:BHP` |
+| Indices | `INDEXSP:` `INDEXDJX:` `INDEXNASDAQ:` `INDEXDB:` | `INDEXSP:.INX` |
+| Currencies and crypto | `CURRENCY:` | `CURRENCY:EURUSD`, `CURRENCY:BTCUSD` |
 
-### 3. Share it so the page can read it
+If a ticker returns `#N/A`, Google doesn't recognise that symbol — copy the exact form shown on google.com/finance.
+
+### 3. Name your tabs
+
+Each tab becomes one list in the page. Two rules:
+
+**Name the tabs `1`, `2`, `3`, …** — plain numbers, nothing else. Not `Sheet1`, not `Tech`, not `01`. Right-click a tab → Rename.
+
+**Put the list's name in cell A1**, and leave the rest of row 1 empty. That's what appears on the tab button — "Watchlist", "Pension", whatever you like.
+
+Up to 24 tabs. Gaps are fine: delete tab `2`, keep `1` and `3`, and both still appear.
+
+> **Why numbers?** The page can't ask Google "what tabs exist?", so it asks for tab 1, tab 2 and so on until it stops finding new ones. Asking for a tab that doesn't exist doesn't return an error — Google quietly serves tab 1 again — so numbered tabs are what let the page tell where your lists end.
+
+### 4. Share it
 
 **Share → General access → Anyone with the link → Viewer → Copy link.**
 
-Viewer is enough. The page only ever reads; it never writes to your sheet.
+**Viewer**, not Editor. The page only ever reads; edit access gains you nothing and means anyone who gets the URL can rewrite or delete your watchlist, with no useful audit trail. And since anyone with the link can read it, keep the sheet to tickers and prices — share counts, cost prices and account numbers don't belong in a link-shared document.
 
-> Anyone who has the link can see this sheet. Don't put anything private in it — share counts, cost prices and account numbers do not belong in a link-shared document.
+You do **not** need *File → Publish to web*. Those links look like `/d/e/2PACX-…` and won't work here.
 
-You do **not** need *File → Publish to web*. The ordinary share link is what this page expects.
+### 5. Load it
 
-### 4. Load it
+Paste the link into the box at the top of the page and press **Load**, or press Enter. A bare sheet ID works too.
 
-Paste the link into the box at the top of the page and press **Load** (or just press Enter). A bare sheet ID works too.
-
-Click the title above the box to give the sheet a name — Google's data endpoint doesn't expose the spreadsheet's own title, so this is a label you set. It's remembered per sheet.
+Your tab names appear as buttons, with **All** first — a merged view of every list, deduplicated by ticker. Click the title above the box to name the sheet; Google's data endpoint doesn't expose the spreadsheet's own title, so this is a label you set, stored per sheet.
 
 ---
 
-## Sheet requirements
+## Keeping the numbers fresh
 
-These are the rules the page relies on. The demo sheet already follows all of them.
+This is the part that surprises people.
 
-### Tabs must be named `1`, `2`, `3`, …
+`GOOGLEFINANCE` values are **not live**. They are delayed up to 20 minutes, and they only recalculate **while the spreadsheet is open**. A sheet nobody has opened since yesterday will happily serve yesterday's prices.
 
-Each tab is one watchlist. Name the tabs with plain numbers and nothing else.
+The distinction that matters:
 
-The page asks Google for tab `1`, tab `2` and so on until it stops finding new ones. Up to **24** tabs are supported. A gap is fine — if you delete tab `2` and keep `3`, tab `3` still appears.
+- **Opening the spreadsheet refreshes it.** The formulas are evaluated on Google's servers, so this works even in read-only mode — your permission level doesn't stop the formula fetching. Loading or refreshing the sheet's browser tab pulls a fresh block of data, and it keeps refreshing in the background roughly every couple of minutes while it stays open.
+- **This page reading your sheet does not.** It fetches a data-export endpoint, which serves the values already stored in the cells. Pressing **Refresh** here re-reads the sheet; it cannot make the sheet re-fetch from Google.
 
-> **Why numbers?** Asking for a tab that doesn't exist doesn't return an error — Google quietly serves tab 1 again. Numbered tabs let the page probe predictably and spot that fallback, which is how it knows where your lists end.
+So the routine is: **open the sheet, then press Refresh on the page.** Keep the spreadsheet open in a tab while you work and it stays current on its own.
 
-### Cell A1 holds the list name
+You can see the difference in the data itself: a row will sometimes show a price from 10:32 next to a change from 10:29, because each cell was last evaluated at a different moment. A fresh recalculation would have computed them together. For the same reason, two sheets holding the same stock will rarely agree to the cent — they're snapshots from different moments.
 
-The first row of each tab is the title row: put the name of that watchlist in **A1** and leave the rest of row 1 empty. That name becomes the tab label in the page.
+Sharing as Editor does **not** help; permissions and recalculation are unrelated. Edit access matters for one thing only: just editors can change **File → Settings → Calculation → Recalculation**, where "On change and every minute" nudges things along. It still only applies while the sheet is open.
 
-Row 1 must contain **no numbers**, or it will be treated as data instead of a title.
-
-### Data starts in row 2, with no header row
-
-Do **not** add a `Symbol | Price | Change` header row. The page works out what each column is from the data itself, and a row of text where it expects numbers breaks that. The A1 title row is the only non-data row allowed.
-
-### Columns
-
-The page identifies columns by their content rather than by position, but there are two rules it can't work around:
-
-- **The ticker must be the leftmost text column.** The first column that isn't numbers is taken to be the ticker.
-- **Numeric columns are read left to right as price, then change, then % change.** Two numbers alone means price and change, never price and percentage.
-
-Within those rules you can arrange things how you like — the demo layout below is simply the sensible one.
-
-| Column | Required | Notes |
-|---|---|---|
-| Ticker | **Yes** | Text, e.g. `NASDAQ:AAPL`. Must be the first text column |
-| Price | **Yes** | A number. The first numeric column |
-| Daily change | No | The second numeric column |
-| Daily change % | No | The third numeric column. Worked out from the change if absent |
-| Company name | No | Text, after the ticker. Falls back to the ticker itself |
-| Currency | No | A three-letter code like `USD`. Without it, prices show as plain numbers |
-
-If you supply the change but not the percentage, the percentage is calculated for you, and vice versa — but only when the column that *is* present sits in its expected position.
-
-The formulas the demo sheet uses, in `B2:F2`, dragged down:
-
-```
-=GOOGLEFINANCE($A2,"price")
-=GOOGLEFINANCE($A2,"change")
-=GOOGLEFINANCE($A2,"changepct")
-=GOOGLEFINANCE($A2,"name")
-=GOOGLEFINANCE($A2,"currency")
-```
-
-If a ticker occasionally returns `#N/A`, wrap it: `=IFERROR(GOOGLEFINANCE($A2,"price"),"")`.
-
-Blank rows and `#N/A` rows are ignored, so it's fine to leave formulas sitting in empty rows below your holdings.
+> **Worth knowing:** the "loaded 15:14" in the page's footer is when *the page* read the sheet, not when the sheet last recalculated. If nobody has opened the spreadsheet for a while, the page can load at 15:14 and still show you this morning's prices. When the numbers matter, open the sheet.
 
 ---
 
@@ -148,37 +135,89 @@ Blank rows and `#N/A` rows are ignored, so it's fine to leave formulas sitting i
 | **Row click** | Opens that stock on Google Finance in a new tab |
 | **Demo sheet** | Loads the example sheet |
 
-**Greyed-out rows** are on an exchange that isn't trading right now, worked out from the exchange in the ticker and your computer's clock. It knows lunch breaks in Hong Kong, Tokyo, Shanghai and Singapore. It does **not** know public holidays — see the disclaimers.
+**Greyed-out rows** are on an exchange that isn't trading right now, worked out from the exchange in the ticker and your computer's clock, and re-checked every minute while the page is open. It knows the lunch breaks in Hong Kong, Tokyo, Shanghai and Singapore. It does **not** know public holidays — see the disclaimers.
 
-Your sheet, chosen tab, sort order, theme and sheet name are remembered locally in your browser. Nothing is sent anywhere.
+Your sheet, chosen tab, sort order, theme and sheet name are remembered in your own browser. Nothing is sent anywhere.
+
+---
+
+## Sheet rules, in full
+
+| Rule | Detail |
+|---|---|
+| Sharing | Anyone with the link → **Viewer** |
+| Tab names | Plain numbers: `1`, `2`, `3`, … up to 24. Gaps allowed |
+| Row 1 | List name in **A1**, rest of the row empty. Must contain **no numbers** |
+| Header row | **Not allowed.** Data starts in row 2 |
+| Ticker column | Required. Must be the **leftmost text column** |
+| Price column | Required. The **first** numeric column |
+| Change column | Optional. The **second** numeric column |
+| % change column | Optional. The **third** numeric column |
+| Name column | Optional text column, to the right of the ticker |
+| Currency column | Optional. Three-letter codes like `USD`, `EUR`, `HKD` |
+| Blank / `#N/A` rows | Ignored, so spare formula rows below your holdings are fine |
+
+Two constraints the page can't work around, because it identifies columns by their content:
+
+- **The ticker must be the leftmost text column.** Put a currency or name column to its left and that column gets mistaken for the ticker.
+- **Numeric columns are read left to right as price, change, % change.** Supply only two numbers and the second is treated as the change, never the percentage.
+
+If you supply only one of change or % change, the other is calculated for you. Without a currency column, prices render as plain numbers rather than `$` or `€`.
+
+---
+
+## Building a sheet from scratch
+
+1. New spreadsheet. Rename the first tab to `1`.
+2. In **A1**, type the name of the list, e.g. `Watchlist`. Leave B1:F1 empty.
+3. In **A2**, type your first ticker, e.g. `NASDAQ:AAPL`.
+4. In **B2:F2**, paste these five formulas:
+
+```
+=GOOGLEFINANCE($A2,"price")
+=GOOGLEFINANCE($A2,"change")
+=GOOGLEFINANCE($A2,"changepct")
+=GOOGLEFINANCE($A2,"name")
+=GOOGLEFINANCE($A2,"currency")
+```
+
+5. Select B2:F2 and drag down as far as you want rows.
+6. Fill column A with your tickers.
+7. Add more tabs named `2`, `3`, … the same way.
+8. Share as **Viewer** and load the link.
+
+To keep `#N/A` out of the sheet while it recalculates, wrap each formula: `=IFERROR(GOOGLEFINANCE($A2,"price"),"")`.
 
 ---
 
 ## Troubleshooting
 
 **"Couldn't read the sheet" / "Google returned a web page instead of data"**
-The sheet isn't shared publicly. Go to **Share → General access → Anyone with the link → Viewer**. This is by far the most common cause.
+The sheet isn't shared publicly. **Share → General access → Anyone with the link → Viewer**. By far the most common cause.
 
 **"Couldn't find a price column in the sheet"**
-Usually a header row — remove it, as only A1's title row is allowed. Otherwise the price column contains text rather than numbers; check the cells aren't formatted as plain text.
+Usually a header row — remove it, only the A1 title row is allowed. Otherwise the price column contains text rather than numbers; check the cells aren't formatted as plain text.
 
 **Prices, changes and percentages in the wrong columns**
-The ticker has to be the leftmost text column, and numbers are read left to right as price, change, percentage. A currency or name column to the left of the ticker will be mistaken for the ticker itself.
+The ticker must be the leftmost text column, and numbers are read left to right as price, change, percentage.
 
 **Only one list shows, or a tab is missing**
-Tab names must be plain numbers. `Sheet1`, `Tech`, `1.` and `01` won't be found — rename to `1`, `2`, `3`.
+Tab names must be plain numbers. `Sheet1`, `Tech`, `1.` and `01` won't be found.
 
-**Two lists show as one**
-If a tab contains exactly the same tickers *and* the same A1 name as tab 1, the page can't distinguish it from Google's silent fallback and hides it. Change the name or the contents.
+**Two lists collapse into one**
+If a tab has exactly the same tickers *and* the same A1 name as tab 1, the page can't tell it apart from Google's silent fallback and hides it. Change the name or the contents.
 
-**Numbers look stale**
-`GOOGLEFINANCE` is delayed 15–20 minutes, and the page loads once. Press **Refresh**. Google also caches these responses for a few minutes.
+**Numbers are stale, or two sheets disagree**
+Open the spreadsheet in a browser tab and refresh it — that forces a fresh pull, even in read-only mode — then press **Refresh** here. See [Keeping the numbers fresh](#keeping-the-numbers-fresh).
+
+**A row shows `#N/A` or no price**
+Google doesn't recognise that ticker. Look it up on google.com/finance and copy the exact `EXCHANGE:TICKER` form.
 
 **Everything is greyed out**
-Check your computer's clock and time zone. If your browser has no time-zone data, nothing is greyed rather than guessing.
+Greying means the exchange isn't trading, based on your computer's clock. Check your system time and time zone. Public holidays aren't known to the page, so a market closed for a holiday will still look open.
 
-**Nothing at all on first open**
-That's intended. Paste a link or press **Demo sheet**.
+**The page opens empty saying "No sheet loaded"**
+That's the first-run state. Paste a link or press **Demo sheet**. If it happens after you'd already loaded a sheet, your browser cleared its local storage — paste the link again.
 
 ---
 
@@ -195,8 +234,9 @@ It loads that with a `<script>` tag rather than `fetch()`. This matters: Google 
 Consequences worth knowing:
 
 - The only network request the page makes is to `docs.google.com`, for your sheet. No proxies, no CDNs, no analytics, no third parties.
-- It works from a `file://` path, a USB stick, or any static web host.
-- Preferences are stored in a cookie *and* in local storage. Browsers refuse cookies on `file://` pages, so when you open the file directly the local-storage copy is what actually remembers you.
+- It works from a `file://` path, a USB stick, or any static web host. The hosted copy is GitHub Pages serving this same file.
+- Preferences are stored in a cookie *and* in local storage. Browsers refuse cookies on `file://` pages, so when you open the file straight off disk the local-storage copy is what remembers you; served over https, both work.
+- Your sheet link is stored **in your own browser only**. Nothing is sent to GitHub, to me, or anywhere else — the hosted page is static files with no backend to send it to.
 
 ---
 
@@ -213,3 +253,13 @@ Consequences worth knowing:
 **No affiliation, no warranty.** Market data belongs to Google and the relevant exchanges and is subject to their terms; this page is not affiliated with, endorsed by or supported by Google, any exchange or any data provider. It is provided as is, without warranty of any kind, and is intended for personal use. Use of the data is at your own risk.
 
 Redistributing exchange data has rules of its own that go beyond a disclaimer. If you plan to publish this page publicly rather than use it yourself, get advice first.
+
+---
+
+## Links
+
+- **Live page** — https://berlotti.github.io/classic-Gfinance/
+- **Source** — https://github.com/berlotti/classic-Gfinance
+- **Issues and suggestions** — https://github.com/berlotti/classic-Gfinance/issues
+
+If it's useful to you and you'd like to say thanks, you can [buy me a coffee](https://buymeacoffee.com/berlotti). Entirely optional — the page is free and always will be.
